@@ -11,17 +11,17 @@ The plugin gets it data from Tromador's mirror, "http://elite.ripz.org/files/", 
 
 Here are all the options available and a brief explanation of what each does:
 
-        'item':         "Regenerate Categories and Items using latest commodities.json dump.",
-        'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
-        'station':      "Regenerate Stations using latest stations.jsonl dump. (implies '-O system')",
-        'ship':         "Regenerate Ships using latest coriolis.io json dump.",
-        'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (implies '-O system,station,ship')",
-        'upgrade':      "Regenerate Upgrades using latest modules.json dump.",
-        'upvend':       "Regenerate UpgradeVendors using latest stations.jsonl dump. (implies '-O system,station,upgrade')",
-        'listings':     "Update market data using latest listings.csv dump. (implies '-O item,system,station')",
-        'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
-        'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
-        'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. Supercedes '-O all', '-O clean'.",
-        'force':        "Force regeneration of selected items even if source file not updated since previous run. "
+    'item':         "Regenerate Categories and Items using latest commodities.json dump.",
+    'system':       "Regenerate Systems using latest system-populated.jsonl dump.",
+    'station':      "Regenerate Stations using latest stations.jsonl dump. (implies '-O system')",
+    'ship':         "Regenerate Ships using latest coriolis.io json dump.",
+    'shipvend':     "Regenerate ShipVendors using latest stations.jsonl dump. (implies '-O system,station,ship')",
+    'upgrade':      "Regenerate Upgrades using latest modules.json dump.",
+    'upvend':       "Regenerate UpgradeVendors using latest stations.jsonl dump. (implies '-O system,station,upgrade')",
+    'listings':     "Update market data using latest listings.csv dump. (implies '-O item,system,station')",
+    'all':          "Update everything with latest dumpfiles. (Regenerates all tables)",
+    'clean':        "Erase entire database and rebuild from empty. (Regenerates all tables.)",
+    'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. Supercedes '-O all', '-O clean'.",
+    'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
-        'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working."
+    'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working."
