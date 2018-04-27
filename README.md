@@ -3,7 +3,7 @@ A plugin for TradeDangerous to update market data using EDDB's api files.
 
 This plugin is released under the LGPLv3, a cop of the licence is included in the repo.
 
-To use, place into your TradeDangerous 'plugin' directory and run with '-P eddblink'
+To use, place "eddblink_plug.py" into your TradeDangerous 'plugin' directory and run with '-P eddblink'
 
 The plugin need to make some changes to the database in order to work, so on first run, it will run with the '-O clean' option enabled regardless of the options passed to it from the command line. '-O skipvend' will skip updating the ShipVendor and UpgradeVendor tables regardless of other options, including on the first run.
 
