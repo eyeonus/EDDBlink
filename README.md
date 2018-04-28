@@ -1,7 +1,7 @@
 # EDDBlink
 A plugin for TradeDangerous to update market data using EDDB's api files.
 
-This plugin is released under the LGPLv3, a cop of the licence is included in the repo.
+This plugin is released under the LGPLv3, a copy of the licence is included in the repo.
 
 To use, place "eddblink_plug.py" into your TradeDangerous 'plugin' directory and run with '-P eddblink'
 
