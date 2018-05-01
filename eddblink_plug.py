@@ -93,7 +93,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # If Tromador's mirror fails for whatever reason,
                 # fallback to download direct from EDDB.io
                 self.options["fallback"] = True
-				pass
+                pass
             if self.getOption('fallback'):
                 url = FALLBACK_URL + urlTail
             else:
@@ -548,7 +548,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                              supply_price = ?, supply_units = ?, supply_level = ?
                             WHERE station_id = ? AND item_id = ?""",
                             (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level,
-							station_id, item_id))
+                            station_id, item_id))
                         except sqlite3.IntegrityError:
                             tdenv.DEBUG1("Error on update.")
                             pass
@@ -574,8 +574,8 @@ class ImportPlugin(plugins.ImportPluginBase):
 
     def importRareItems(self):
         """
-		Updates the RareItem table using commodities.json.
-		Not an easy task, so still a TODO
+        Updates the RareItem table using commodities.json.
+        Not an easy task, so still a TODO
         """
         return
 
