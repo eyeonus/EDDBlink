@@ -101,9 +101,27 @@ class ImportPlugin(plugins.ImportPluginBase):
         dumpModded = 0
         # The coriolis file is from github, so it doesn't have a "Last-Modified" metadata.
         if url != SHIPS_URL:
-            dumpModded = timegm(datetime.datetime.strptime( \
-                    urllib.request.urlopen(url).getheader("Last-Modified"),\
-                   "%a, %d %b %Y %X GMT").timetuple())
+            # Stupid strptime() is locale-dependent, so we do it ourself.
+            # 'Last-Modified' is in the form "DDD, dd MMM yyyy hh:mm:ss GMT"
+            # dDL                               0   1   2    3        4   5
+            # dTL                                               0  1  2
+
+            # We'll need to turn the 'MMM' into a number.
+            Months = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12}
+
+            # We need to split the string twice, because the time is separated by ':', not ' '.
+            dDL = urllib.request.urlopen(url).getheader("Last-Modified").split(' ')
+            dTL = dDL[4].split(':')
+
+            # Now we need to make a datetime object using the DateList and TimeList we just created,
+            # and then we can finally convert that to a Unix-epoch number.
+            dumpDT = datetime.datetime(int(dDL[3]), Months[dDL[2]], int(dDL[1]),\
+               hour=int(dTL[0]), minute=int(dTL[1]), second=int(dTL[2]),\
+               tzinfo=datetime.timezone.utc)
+            dumpModded = timegm(dumpDT.timetuple())
+            #dumpModded = timegm(datetime.datetime.strptime( \
+            #        urllib.request.urlopen(url).getheader("Last-Modified"),\
+            #       "%a, %d %b %Y %X GMT").timetuple())
 
         if Path.exists(self.dataPath / path):
             localModded = (self.dataPath / path).stat().st_mtime
@@ -670,7 +688,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         tdenv.ignoreUnknown = True
 
-        tdb.reloadCache()
+        #tdb.reloadCache()
         tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
 
         #Select which options will be updated
