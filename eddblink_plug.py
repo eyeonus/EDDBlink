@@ -438,7 +438,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 avg_price = commodity['average_price']
                 fdev_id = commodity['ed_id']
                 # "ui_order" doesn't have an equivalent field in the json.
-                if db.execute("SELECT category_id FROM Category WHERE category_id = ?", (category_id,)).fetchone():
+                if db.execute("SELECT item_id FROM Item WHERE item_id = ?", (item_id,)).fetchone():
+                    print("Item insertion happens?")
                     tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
                     db.execute("""UPDATE Item
                         SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
