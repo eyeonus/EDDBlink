@@ -439,7 +439,6 @@ class ImportPlugin(plugins.ImportPluginBase):
                 fdev_id = commodity['ed_id']
                 # "ui_order" doesn't have an equivalent field in the json.
                 if db.execute("SELECT item_id FROM Item WHERE item_id = ?", (item_id,)).fetchone():
-                    print("Item insertion happens?")
                     tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
                     db.execute("""UPDATE Item
                         SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
