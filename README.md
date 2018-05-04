@@ -8,7 +8,7 @@ To use, place "eddblink_plug.py" into your TradeDangerous 'plugin' directory and
 The plugin needs to make some changes to the database in order to work, so on first run, it will run with the '-O clean' option enabled regardless of the options passed to it from the command line. '-O skipvend' will skip updating the ShipVendor and UpgradeVendor tables regardless of other options, including on the first run.
 
 It is recommended to use '-O clean,skipvend' on slower computers when doing a clean run, including the first run.
-It is recommended to use '-O listings' on all computers after the intial run.
+It is recommended to use '-O listings' on all computers after the first run.
 
 '-O clean' will COMPLETELY WIPE the database and rebuild it from scratch using the downloaded dump files.
 
