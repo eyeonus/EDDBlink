@@ -12,7 +12,7 @@ It is recommended to use '-O listings' on all computers after the first run.
 
 '-O clean' will COMPLETELY WIPE the database and rebuild it from scratch using the downloaded dump files.
 
-The plugin gets it data from Tromador's mirror, "http://elite.ripz.org/", but if for any reason that site goes down it will automatically fallback to downloading directly from EDDB.io's API.
+The plugin gets its data from Tromador's mirror, "http://elite.ripz.org/", but if for any reason that site goes down it will automatically fallback to downloading directly from EDDB.io's API.
 
 Here are all the options available and a brief explanation of what each does:
 
