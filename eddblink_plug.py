@@ -683,12 +683,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 os.remove(str(tdb.dataPath) + "/TradeDangerous.prices")
             except FileNotFoundError:
                 pass
+            tdb.reloadCache()
             self.options["all"] = True
             self.options['force'] = True
 
         tdenv.ignoreUnknown = True
 
-        #tdb.reloadCache()
         tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
 
         #Select which options will be updated
