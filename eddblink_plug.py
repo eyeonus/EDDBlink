@@ -755,7 +755,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             _, path = csvexport.exportTableToFile(tdb, tdenv, 'RareItem')
             tdenv.NOTE("{} re-exported.", path)
 
-        tdb.reloadCache()
         tdb.close()
 
         tdenv.NOTE("Regenerating .prices file.")
