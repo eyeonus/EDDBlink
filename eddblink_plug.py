@@ -167,7 +167,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                        (upgrade_id, name, weight, cost))
 
         self.updated['Upgrade'] = True
-        db.commit()
+        
+        success = False
+        while not success:
+            try:
+                db.commit()
+            except sqlite3.DatabaseError:
+                time.sleep(1)
+                continue
+            success = True
+            
         tdenv.NOTE("Finished processing Upgrades. End time = {}", datetime.datetime.now())
 
     def importShips(self):
@@ -209,7 +218,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                        (ship_id, name, cost, fdev_id))
 
         self.updated['Ship'] = True
-        db.commit()
+        
+        success = False
+        while not success:
+            try:
+                db.commit()
+            except sqlite3.DatabaseError:
+                time.sleep(1)
+                continue
+            success = True
+            
         tdenv.NOTE("Finished processing Ships. End time = {}", datetime.datetime.now())
 
     def importSystems(self):
@@ -265,7 +283,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                         (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
                 print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
-        db.commit()
+        
+        success = False
+        while not success:
+            try:
+                db.commit()
+            except sqlite3.DatabaseError:
+                time.sleep(1)
+                continue
+            success = True
+            
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
 
     def importStations(self):
@@ -415,8 +442,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  modified))
                         self.updated['UpgradeVendor'] = True
                 print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
-
-        db.commit()
+        
+        success = False
+        while not success:
+            try:
+                db.commit()
+            except sqlite3.DatabaseError:
+                time.sleep(1)
+                continue
+            success = True
+            
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
 
     def importCommodities(self):
@@ -495,7 +530,16 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         self.updated['Category'] = True
         self.updated['Item'] = True
-        db.commit()
+        
+        success = False
+        while not success:
+            try:
+                db.commit()
+            except sqlite3.DatabaseError:
+                time.sleep(1)
+                continue
+            success = True
+            
         tdenv.NOTE("Finished processing Categories and Items. End time = {}", datetime.datetime.now())
 
     def regenerate(self):
@@ -587,7 +631,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
                         pass
-        db.commit()
+        
+        success = False
+        while not success:
+            try:
+                db.commit()
+            except sqlite3.DatabaseError:
+                time.sleep(1)
+                continue
+            success = True
+            
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
     def importRareItems(self):
