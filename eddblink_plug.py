@@ -723,7 +723,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     os.remove(str(file))
                 except FileNotFoundError:
                     pass
-
+                
             try:
                 os.remove(str(tdb.dataPath) + "/TradeDangerous.db")
             except FileNotFoundError:
@@ -732,7 +732,24 @@ class ImportPlugin(plugins.ImportPluginBase):
                 os.remove(str(tdb.dataPath) + "/TradeDangerous.prices")
             except FileNotFoundError:
                 pass
+
+            # Because this is a clean run, we need to temporarily rename the RareItem.csv,
+            # otherwise TD will crash trying to insert the items to the database.
+            ri_path = tdb.dataPath / Path("RareItem.csv")
+            rib_path = tdb.dataPath / Path("RareItem.tmp")
+            if rib_path.exists() and ri_path.exists():
+                rib_path.unlink()
+            if ri_path.exists():
+                ri_path.rename(rib_path)
+
             tdb.reloadCache()
+            
+            # Now it's safe to move RareItems back.
+            if ri_path.exists():
+                ri_path.unlink()
+            if rib_path.exists():
+                rib_path.rename(ri_path)
+                        
             self.options["all"] = True
             self.options['force'] = True
 
