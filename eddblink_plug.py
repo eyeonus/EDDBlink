@@ -697,6 +697,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         for tableKey in ['system_id', 'station_id', 'ship_id', 'upgrade_id', 'category_id', 'item_id']:
             tmpFile = tmpFile.replace(tableKey + ' INTEGER PRIMARY KEY AUTOINCREMENT', tableKey + ' INTEGER PRIMARY KEY')
             
+        #For backwards compatibility, undo these changes on databases that older versions of the plugin altered.
+        tmpFile = tmpFile.replace("UNIQUE (rare_id),\n\n   FOREIGN KEY (station_id)", "UNIQUE (name),\n\n   FOREIGN KEY (station_id)")
+        tmpFile = tmpFile.replace('rare_id INTEGER PRIMARY KEY,', 'rare_id INTEGER PRIMARY KEY AUTOINCREMENT,')
+            
         with tdb.sqlPath.open('w', encoding = "utf-8") as fh:
             fh.write(tmpFile)
    
