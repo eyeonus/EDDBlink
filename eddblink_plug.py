@@ -461,7 +461,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         """
         tdb, tdenv = self.tdb, self.tdenv
         db = tdb.getDB()
-
+        
         tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
             commodities = json.load(fh)
@@ -483,7 +483,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                         ( ?, ? ) """,
                        (category_id, name))
                        
-            # Only put regular items here, rare items are dealt with seperately.
+            # Only put regular items here, rare items can't be dealt with.
             if not commodity['is_rare']:
                 item_id = commodity['id']
                 name = commodity['name']
@@ -643,13 +643,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
-    def importRareItems(self):
-        """
-        Updates the RareItem table using commodities.json.
-        Not an easy task, so still a TODO
-        """
-        return
-
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
 
@@ -697,7 +690,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         tmpFile = tmpFile.replace("UNIQUE (system_id, name),","UNIQUE (station_id),")
         tmpFile = tmpFile.replace("fdev_id INTEGER,\n\n   UNIQUE (name)","fdev_id INTEGER,\n\n   UNIQUE (ship_id)")
         tmpFile = tmpFile.replace("cost NUMBER NOT NULL,\n\n   UNIQUE (name)","cost NUMBER NOT NULL,\n\n   UNIQUE (upgrade_id)")
-        tmpFile = tmpFile.replace("UNIQUE (name),\n\n   FOREIGN KEY (station_id)","UNIQUE (rare_id),\n\n   FOREIGN KEY (station_id)")
         tmpFile = tmpFile.replace("name VARCHAR(40) COLLATE nocase,\n\n   UNIQUE (name)","name VARCHAR(40) COLLATE nocase,\n\n   UNIQUE (category_id)")
         tmpFile = tmpFile.replace("UNIQUE (category_id, name),","UNIQUE (item_id),")
         tmpFile = tmpFile.replace(";\n\n\nCREATE TABLE RareItem",";\nCREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);\n\nCREATE TABLE RareItem")
@@ -715,7 +707,6 @@ class ImportPlugin(plugins.ImportPluginBase):
             for name in [
                 "Category",
                 "Item",
-                "RareItem",
                 "Ship",
                 "ShipVendor",
                 "Station",
@@ -774,7 +765,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-
+            
         # Download required files and update tables.
         if self.getOption("upgrade"):
             if self.downloadFile(UPGRADES_URL, self.upgradesPath) or self.getOption("force"):
@@ -802,11 +793,6 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("listings"):
             if self.downloadFile(LISTINGS_URL, self.listingsPath) or self.getOption("force"):
                 self.importListings()
-
-        if self.getOption("all"):
-            self.importRareItems()
-            _, path = csvexport.exportTableToFile(tdb, tdenv, 'RareItem')
-            tdenv.NOTE("{} re-exported.", path)
 
         tdb.close()
 
