@@ -16,6 +16,7 @@ import urllib
 from calendar import timegm
 from pathlib import Path
 from plugins import PluginException
+from importlib import reload
 
 # Constants
 
@@ -665,11 +666,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             tmpFile = tmpFile.replace("reverseList = [\n    'Item',\n    'ShipVendor',\n    'Station',\n    'UpgradeVendor',\n]","reverseList = []")
             with open('./csvexport.py', 'w', encoding = "utf-8") as fh:
                 fh.write(tmpFile)
-            # TD won't recognize the change to csvexport.py we just made, so we need to run the program again.
-            print("TradeDangerous files changed, must be run again for changes to take effect.")
-            print("(csvexport.py changed to include item IDs when exporting instead of ignoring them.)")
-            print("TD will exit now, please run eddblink with '-O clean'.")
-            return False
+            # This makes it so we don't have to restart TD to make the csvexport change be recognized.
+            reload(csvexport)
 
         with tdb.sqlPath.open('r', encoding = "utf-8") as fh:
             tmpFile = fh.read()
