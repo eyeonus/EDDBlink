@@ -734,7 +734,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 pass
 
             # Because this is a clean run, we need to temporarily rename the RareItem.csv,
-            # otherwise TD will crash trying to insert the items to the database.
+            # otherwise TD will crash trying to insert the rare items to the database,
+            # because there's nothing in the Station table it tries to pull from.
             ri_path = tdb.dataPath / Path("RareItem.csv")
             rib_path = tdb.dataPath / Path("RareItem.tmp")
             if rib_path.exists() and ri_path.exists():
