@@ -694,7 +694,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         tmpFile = tmpFile.replace("UNIQUE (category_id, name),","UNIQUE (item_id),")
         tmpFile = tmpFile.replace(";\n\n\nCREATE TABLE RareItem",";\nCREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);\n\nCREATE TABLE RareItem")
 
-        for tableKey in ['system_id', 'station_id', 'ship_id', 'upgrade_id', 'category_id', 'item_id', 'rare_id']:
+        for tableKey in ['system_id', 'station_id', 'ship_id', 'upgrade_id', 'category_id', 'item_id']:
             tmpFile = tmpFile.replace(tableKey + ' INTEGER PRIMARY KEY AUTOINCREMENT', tableKey + ' INTEGER PRIMARY KEY')
             
         with tdb.sqlPath.open('w', encoding = "utf-8") as fh:
