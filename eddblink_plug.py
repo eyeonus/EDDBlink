@@ -58,15 +58,14 @@ class ImportPlugin(plugins.ImportPluginBase):
     def __init__(self, tdb, tdenv):
         super().__init__(tdb, tdenv)
 
-        self.dataPath = tdb.dataPath
-        self.eddbPath = Path("eddb")
-        self.commoditiesPath = self.eddbPath / Path("commodities.json")
-        self.systemsPath = self.eddbPath / Path("systems_populated.jsonl")
-        self.stationsPath = self.eddbPath / Path("stations.jsonl")
-        self.upgradesPath = self.eddbPath / Path("modules.json")
-        self.shipsPath = self.eddbPath / Path("index.json")
-        self.listingsPath = self.eddbPath / Path("listings.csv")
-        self.pricesPath = self.eddbPath / Path("listings.prices")
+        self.dataPath = tdb.dataPath / Path("eddb")
+        self.commoditiesPath = Path("commodities.json")
+        self.systemsPath = Path("systems_populated.jsonl")
+        self.stationsPath = Path("stations.jsonl")
+        self.upgradesPath = Path("modules.json")
+        self.shipsPath = Path("index.json")
+        self.listingsPath = Path("listings.csv")
+        self.pricesPath = Path("listings.prices")
         self.updated = {
                 "Category": False,
                 "Item": False,
