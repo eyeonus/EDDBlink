@@ -23,11 +23,11 @@ from importlib import reload
 BASE_URL = "http://elite.ripz.org/files/"
 FALLBACK_URL = "https://eddb.io/archive/v5/"
 SHIPS_URL = "https://raw.githubusercontent.com/EDCD/coriolis-data/master/dist/index.json"
-COMMODITIES_URL = "commodities.json"
-SYSTEMS_URL = "systems_populated.jsonl"
-STATIONS_URL = "stations.jsonl"
-UPGRADES_URL = "modules.json"
-LISTINGS_URL = "listings.csv"
+COMMODITIES = "commodities.json"
+SYSTEMS = "systems_populated.jsonl"
+STATIONS = "stations.jsonl"
+UPGRADES = "modules.json"
+LISTINGS = "listings.csv"
 
 class DecodingError(PluginException):
     pass
@@ -59,12 +59,12 @@ class ImportPlugin(plugins.ImportPluginBase):
         super().__init__(tdb, tdenv)
 
         self.dataPath = tdb.dataPath / Path("eddb")
-        self.commoditiesPath = Path("commodities.json")
-        self.systemsPath = Path("systems_populated.jsonl")
-        self.stationsPath = Path("stations.jsonl")
-        self.upgradesPath = Path("modules.json")
+        self.commoditiesPath = Path(COMMODITIES)
+        self.systemsPath = Path(SYSTEMS)
+        self.stationsPath = Path(STATIONS)
+        self.upgradesPath = Path(UPGRADES)
+        self.listingsPath = Path(LISTINGS)
         self.shipsPath = Path("index.json")
-        self.listingsPath = Path("listings.csv")
         self.pricesPath = Path("listings.prices")
         self.updated = {
                 "Category": False,
@@ -787,7 +787,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
         # Download required files and update tables.
         if self.getOption("upgrade"):
-            if self.downloadFile(UPGRADES_URL, self.upgradesPath) or self.getOption("force"):
+            if self.downloadFile(UPGRADES, self.upgradesPath) or self.getOption("force"):
                 self.importUpgrades()
 
         if self.getOption("ship"):
@@ -795,22 +795,22 @@ class ImportPlugin(plugins.ImportPluginBase):
                 self.importShips()
 
         if self.getOption("system"):
-            if self.downloadFile(SYSTEMS_URL, self.systemsPath) or self.getOption("force"):
+            if self.downloadFile(SYSTEMS, self.systemsPath) or self.getOption("force"):
                 self.importSystems()
 
         if self.getOption("station"):
-            if self.downloadFile(STATIONS_URL, self.stationsPath) or self.getOption("force"):
+            if self.downloadFile(STATIONS, self.stationsPath) or self.getOption("force"):
                 self.importStations()
 
         if self.getOption("item"):
-            if self.downloadFile(COMMODITIES_URL, self.commoditiesPath) or self.getOption("force"):
+            if self.downloadFile(COMMODITIES, self.commoditiesPath) or self.getOption("force"):
                 self.importCommodities()
 
         #Remake the .csv files with the updated info.
         self.regenerate()
 
         if self.getOption("listings"):
-            if self.downloadFile(LISTINGS_URL, self.listingsPath) or self.getOption("force"):
+            if self.downloadFile(LISTINGS, self.listingsPath) or self.getOption("force"):
                 self.importListings()
 
         tdb.close()
