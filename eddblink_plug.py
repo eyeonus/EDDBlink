@@ -648,7 +648,7 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         #Create the /eddb folder for downloading the source files if it doesn't exist.
         try:
-           Path(str(self.dataPath / self.eddbPath)).mkdir()
+           Path(str(self.dataPath)).mkdir()
         except FileExistsError:
             pass
 
