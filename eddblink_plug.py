@@ -816,6 +816,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             if self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force"):
                 self.importListings(self.liveListingsPath)
 
+        success = False
+        while not success:
+            try:
+                tdb.getDB().commit()
+                success = True
+            except sqlite3.OperationalError:
+                print("Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
+        
         tdb.close()
 
         tdenv.NOTE("Regenerating .prices file.")
