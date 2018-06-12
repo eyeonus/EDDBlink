@@ -552,8 +552,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         tdb, tdenv = self.tdb, self.tdenv
         
         tdenv.NOTE("Processing market data from {}: Start time = {}", listings_file, datetime.datetime.now())
-        if not listings_file.exists():
-            tdenv.NOTE("File not found, aborting: {}", listings_file)
+        if not (self.dataPath / listings_file).exists():
+            tdenv.NOTE("File not found, aborting: {}", (self.dataPath / listings_file))
             return
         
         progress = 0
