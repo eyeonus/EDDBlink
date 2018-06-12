@@ -113,10 +113,11 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # If Tromador's mirror fails for whatever reason,
                 # fallback to download direct from EDDB.io
                 self.options["fallback"] = True
-                # Except for the live listings, since EDDB.io doesn't have that.
+            if self.getOption('fallback'):
+                # EDDB.io doesn't have live listings.
                 if urlTail == LIVE_LISTINGS:
                     return False
-            if self.getOption('fallback'):
+
                 url = FALLBACK_URL + urlTail
             else:
                 url = BASE_URL + urlTail
@@ -585,6 +586,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                 result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
+                    # When the dump file data matches the database, update to make from_live == 0.
+                    if int(listing['collected_at']) == updated and listing_file == LISTINGS:
+                        self.execute("""UPDATE StationItem
+                                    SET from_live = 0
+                                    WHERE station_id = ? AND item_id = ?""",
+                                    (station_id, item_id))
                     if int(listing['collected_at']) > updated:
                         tdenv.DEBUG1("Updating:{}, {}, {}, {}, {}, {}, {}, {}, {}",
                              station_id, item_id, modified,
