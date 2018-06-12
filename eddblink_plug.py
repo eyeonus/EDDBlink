@@ -28,6 +28,7 @@ SYSTEMS = "systems_populated.jsonl"
 STATIONS = "stations.jsonl"
 UPGRADES = "modules.json"
 LISTINGS = "listings.csv"
+LIVE_LISTINGS = "listings-live.csv"
 
 class DecodingError(PluginException):
     pass
@@ -64,6 +65,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         self.stationsPath = Path(STATIONS)
         self.upgradesPath = Path(UPGRADES)
         self.listingsPath = Path(LISTINGS)
+        self.liveListingsPath = Path(LIVE_LISTINGS)
         self.shipsPath = Path("index.json")
         self.pricesPath = Path("listings.prices")
         self.updated = {
@@ -77,7 +79,25 @@ class ImportPlugin(plugins.ImportPluginBase):
                 "Upgrade": False,
                 "UpgradeVendor": False
             }
-            
+    
+    def execute(self, sql_cmd, args = None):
+        tdb, tdenv = self.tdb, self.tdenv
+        cur = tdb.getDB().cursor()
+        
+        success = False
+        result = None
+        while not success:
+            try:
+                if args:
+                    result = cur.execute(sql_cmd, args)
+                else:
+                    result = cur.execute(sql_cmd)
+                success = True
+            except sqlite3.OperationalError:
+                print("Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
+        return result
+    
     def downloadFile(self, urlTail, path):
         """
         Fetch the latest dumpfile from the website if newer than local copy.
@@ -93,7 +113,9 @@ class ImportPlugin(plugins.ImportPluginBase):
                 # If Tromador's mirror fails for whatever reason,
                 # fallback to download direct from EDDB.io
                 self.options["fallback"] = True
-                pass
+                # Except for the live listings, since EDDB.io doesn't have that.
+                if urlTail == LIVE_LISTINGS:
+                    return False
             if self.getOption('fallback'):
                 url = FALLBACK_URL + urlTail
             else:
@@ -142,8 +164,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Writes directly to database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-        db = tdb.getDB()
-
+        
         tdenv.NOTE("Processing Upgrades: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.upgradesPath), "rU") as fh:
             upgrades = json.load(fh)
@@ -152,31 +173,25 @@ class ImportPlugin(plugins.ImportPluginBase):
             name = upgrade['name'] if upgrade['name'] else upgrade['ed_symbol'].replace('_',' ')
             weight = upgrade['mass'] if 'mass' in upgrade else 0
             cost = upgrade['price'] if upgrade['price'] else 0
-            if db.execute("SELECT upgrade_id FROM Upgrade WHERE upgrade_id = ?", (upgrade_id,)).fetchone():
-                tdenv.DEBUG1("Updating: {}, {}, {}, {}", upgrade_id, name, weight, cost)
-                db.execute("""UPDATE Upgrade
-                        SET name = ?,weight = ?,cost = ?
-                        WHERE upgrade_id = ?""", 
-                       (name, weight, cost,
-                        upgrade_id))
-            else:
-                tdenv.DEBUG1("Inserting: {}, {}, {}, {}",upgrade_id, name, weight, cost)
-                db.execute("""INSERT INTO Upgrade
-                        ( upgrade_id,name,weight,cost ) VALUES
-                        ( ?, ?, ?, ? ) """,
-                       (upgrade_id, name, weight, cost))
+            
+            tdenv.DEBUG1("Updating: {}, {}, {}, {}", upgrade_id, name, weight, cost)
+            try:
+                self.execute("""INSERT INTO Upgrade
+                            ( upgrade_id,name,weight,cost ) VALUES
+                            ( ?, ?, ?, ? ) """,
+                            (upgrade_id, name, weight, cost))
+            except sqlite3.IntegrityError:
+                try:
+                    self.execute("""UPDATE Upgrade
+                                SET name = ?,weight = ?,cost = ?
+                                WHERE upgrade_id = ?""", 
+                                (name, weight, cost,
+                                 upgrade_id))
+                except sqlite3.IntegrityError:
+                    tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}", upgrade_id, name, weight, cost)
 
         self.updated['Upgrade'] = True
         
-        success = False
-        while not success:
-            try:
-                db.commit()
-            except sqlite3.DatabaseError:
-                time.sleep(1)
-                continue
-            success = True
-            
         tdenv.NOTE("Finished processing Upgrades. End time = {}", datetime.datetime.now())
 
     def importShips(self):
@@ -185,8 +200,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Writes directly to database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-        db = tdb.getDB()
-
+        
         tdenv.NOTE("Processing Ships: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.shipsPath), "rU") as fh:
             ships = json.load(fh)['Ships']
@@ -203,31 +217,25 @@ class ImportPlugin(plugins.ImportPluginBase):
                 name = "Sidewinder Mk. I"
             if name == "Viper":
                 name = "Viper Mk. III"
-            if db.execute("SELECT ship_id FROM Ship WHERE ship_id = ?", (ship_id,)).fetchone():
-                tdenv.DEBUG1("Updating: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
-                db.execute("""UPDATE Ship
-                        SET name = ?,cost = ?,fdev_id = ?
-                        WHERE ship_id = ?""",
-                        (name, cost, fdev_id,
-                        ship_id))
-            else:
-                tdenv.DEBUG1("Inserting: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
-                db.execute("""INSERT INTO Ship
-                        ( ship_id,name,cost,fdev_id ) VALUES
-                        ( ?, ?, ?, ? ) """,
-                       (ship_id, name, cost, fdev_id))
+            
+            tdenv.DEBUG1("Updating: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
+            try:
+                self.execute("""INSERT INTO Ship
+                                ( ship_id,name,cost,fdev_id ) VALUES
+                                ( ?, ?, ?, ? ) """,
+                                (ship_id, name, cost, fdev_id))
+            except sqlite3.IntegrityError:
+                try:
+                    self.execute("""UPDATE Ship
+                                    SET name = ?,cost = ?,fdev_id = ?
+                                    WHERE ship_id = ?""",
+                                    (name, cost, fdev_id,
+                                     ship_id))
+                except sqlite3.IntegrityError:
+                    tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}", ship_id, name, cost, fdev_id)
 
         self.updated['Ship'] = True
         
-        success = False
-        while not success:
-            try:
-                db.commit()
-            except sqlite3.DatabaseError:
-                time.sleep(1)
-                continue
-            success = True
-            
         tdenv.NOTE("Finished processing Ships. End time = {}", datetime.datetime.now())
 
     def importSystems(self):
@@ -236,8 +244,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Writes directly to database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-        db = tdb.getDB()
-
+        
         tdenv.NOTE("Processing Systems: Start time = {}", datetime.datetime.now())
 
         progress = 0
@@ -254,6 +261,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             for line in fh:
                 progress += 1
+                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -261,38 +269,28 @@ class ImportPlugin(plugins.ImportPluginBase):
                 pos_y = system['y']
                 pos_z = system['z']
                 modified = datetime.datetime.utcfromtimestamp(system['updated_at']).strftime('%Y-%m-%d %H:%M:%S')
-
-                result = db.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
+                
+                result = self.execute("SELECT modified FROM System WHERE system_id = ?", (system_id,)).fetchone()
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     if system['updated_at'] > updated:
                         tdenv.DEBUG0("System '{}' has been updated: '{}' vs '{}'", name, modified, result[0])
                         tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
-                        db.execute("""UPDATE System
-                                SET name = ?,pos_x = ?,pos_y = ?,pos_z = ?,modified = ?
-                                WHERE system_id = ?""", 
-                               (name, pos_x, pos_y, pos_z, modified,
-                                system_id))
+                        self.execute("""UPDATE System
+                                    SET name = ?,pos_x = ?,pos_y = ?,pos_z = ?,modified = ?
+                                    WHERE system_id = ?""", 
+                                    (name, pos_x, pos_y, pos_z, modified,
+                                     system_id))
                         self.updated['System'] = True
                 else:
                     tdenv.DEBUG0("System '{}' has been added.", name)
                     tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}, {}", system_id, name, pos_x, pos_y, pos_z, modified)
-                    db.execute("""INSERT INTO System
-                        ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
-                        ( ?, ?, ?, ?, ?, ? ) """,
-                        (system_id, name, pos_x, pos_y, pos_z, modified))
+                    self.execute("""INSERT INTO System
+                                ( system_id,name,pos_x,pos_y,pos_z,modified ) VALUES
+                                ( ?, ?, ?, ?, ?, ? ) """,
+                                (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
-                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
         
-        success = False
-        while not success:
-            try:
-                db.commit()
-            except sqlite3.DatabaseError:
-                time.sleep(1)
-                continue
-            success = True
-            
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
 
     def importStations(self):
@@ -302,8 +300,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Writes directly to database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-        db = tdb.getDB()
-
+        
         tdenv.NOTE("Processing Stations, this may take a bit: Start time = {}", datetime.datetime.now())
         if self.getOption('shipvend'):
             tdenv.NOTE("Simultaneously processing ShipVendors.")
@@ -322,10 +319,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / self.stationsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in blocks(f)))
-
+        
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             for line in fh:
                 progress += 1
+                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
                 station = json.loads(line)
                 
                 # Import Stations
@@ -343,11 +341,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 refuel = 'Y' if station['has_refuel'] else 'N'
                 repair = 'Y' if station['has_repair'] else 'N'
                 planetary = 'Y' if station['is_planetary'] else 'N'
-
-                system = db.execute("SELECT System.name FROM System WHERE System.system_id = ?", (system_id,)).fetchone()[0].upper()
                 
-                result = db.execute("SELECT modified FROM Station WHERE station_id = ?", (station_id,)).fetchone()
+                system = self.execute("SELECT System.name FROM System WHERE System.system_id = ?", (system_id,)).fetchone()[0].upper()
                 
+                result = self.execute("SELECT modified FROM Station WHERE station_id = ?", (station_id,)).fetchone()
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     if station['updated_at'] > updated:
@@ -358,15 +355,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                                     station_id, name, system_id, ls_from_star, blackmarket,
                                     max_pad_size, market, shipyard, modified, outfitting,
                                     rearm, refuel, repair, planetary)
-                        db.execute("""UPDATE Station
-                                SET name = ?, system_id = ?, ls_from_star = ?, blackmarket = ?,
-                                max_pad_size = ?, market = ?, shipyard = ?, modified = ?,
-                                outfitting = ?, rearm = ?, refuel = ?, repair = ?, planetary = ?
-                                WHERE station_id = ?""", 
-                               (name, system_id, ls_from_star, blackmarket,
-                                max_pad_size, market, shipyard, modified,
-                                outfitting, rearm, refuel, repair, planetary, 
-                                station_id))
+                        self.execute("""UPDATE Station
+                                    SET name = ?, system_id = ?, ls_from_star = ?, blackmarket = ?,
+                                    max_pad_size = ?, market = ?, shipyard = ?, modified = ?,
+                                    outfitting = ?, rearm = ?, refuel = ?, repair = ?, planetary = ?
+                                    WHERE station_id = ?""", 
+                                    (name, system_id, ls_from_star, blackmarket,
+                                     max_pad_size, market, shipyard, modified,
+                                     outfitting, rearm, refuel, repair, planetary, 
+                                     station_id))
                         self.updated['Station'] = True
                 else:
                     tdenv.DEBUG0("{}/{} has been added:", system ,name)
@@ -375,16 +372,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                         station_id, name, system_id, ls_from_star, blackmarket,
                         max_pad_size, market, shipyard, modified, outfitting,
                         rearm, refuel, repair, planetary)
-                    db.execute("""INSERT INTO Station (
-                        station_id,name,system_id,ls_from_star,
-                        blackmarket,max_pad_size,market,shipyard,
-                        modified,outfitting,rearm,refuel,
-                        repair,planetary ) VALUES
-                        ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) """,
-                        (station_id,name,system_id,ls_from_star,
-                        blackmarket,max_pad_size,market,shipyard,
-                        modified,outfitting,rearm,refuel,
-                        repair,planetary))
+                    self.execute("""INSERT INTO Station (
+                                station_id,name,system_id,ls_from_star,
+                                blackmarket,max_pad_size,market,shipyard,
+                                modified,outfitting,rearm,refuel,
+                                repair,planetary ) VALUES
+                                ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) """,
+                                (station_id,name,system_id,ls_from_star,
+                                 blackmarket,max_pad_size,market,shipyard,
+                                 modified,outfitting,rearm,refuel,
+                                 repair,planetary))
                     self.updated['Station'] = True
                 
                 #Import shipyards into ShipVendors if shipvend is set.
@@ -392,13 +389,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                     if not station['shipyard_updated_at']:
                         station['shipyard_updated_at'] = station['updated_at']
                     modified = datetime.datetime.utcfromtimestamp(station['shipyard_updated_at']).strftime('%Y-%m-%d %H:%M:%S')
-                    result = db.execute("SELECT modified FROM ShipVendor WHERE station_id = ?", (station_id,)).fetchone()
+                    result = self.execute("SELECT modified FROM ShipVendor WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
                         updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     else:
                         updated = 0
                     if station['shipyard_updated_at'] > updated:
-                        db.execute("DELETE FROM ShipVendor WHERE station_id = ?", (station_id,))
+                        self.execute("DELETE FROM ShipVendor WHERE station_id = ?", (station_id,))
                         tdenv.DEBUG1("{}/{} has shipyard, updating ships sold.", system, name)
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
@@ -407,12 +404,12 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  ship,
                                  station_id,
                                  modified)
-                            db.execute("""INSERT INTO ShipVendor
-                                ( ship_id,station_id,modified ) VALUES
-                                ( (SELECT Ship.ship_id FROM Ship WHERE Ship.name = ?), ?, ? ) """,
-                                (ship,
-                                 station_id,
-                                 modified))
+                            self.execute("""INSERT INTO ShipVendor
+                                        ( ship_id,station_id,modified ) VALUES
+                                        ( (SELECT Ship.ship_id FROM Ship WHERE Ship.name = ?), ?, ? ) """,
+                                        (ship,
+                                         station_id,
+                                         modified))
                         self.updated['ShipVendor'] = True
                         
                 #Import Outfitters into UpgradeVendors if upvend is set.
@@ -420,38 +417,28 @@ class ImportPlugin(plugins.ImportPluginBase):
                     if not station['outfitting_updated_at']:
                         station['outfitting_updated_at'] = station['updated_at']
                     modified = datetime.datetime.utcfromtimestamp(station['outfitting_updated_at']).strftime('%Y-%m-%d %H:%M:%S')
-                    result = db.execute("SELECT modified FROM UpgradeVendor WHERE station_id = ?", (station_id,)).fetchone()
+                    result = self.execute("SELECT modified FROM UpgradeVendor WHERE station_id = ?", (station_id,)).fetchone()
                     if result:
                         updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     else:
                         updated = 0
                     if station['outfitting_updated_at'] > updated:
-                        db.execute("DELETE FROM UpgradeVendor WHERE station_id = ?", (station_id,))
+                        self.execute("DELETE FROM UpgradeVendor WHERE station_id = ?", (station_id,))
                         tdenv.DEBUG1("{}/{} has outfitting, updating modules sold.", system, name)
                         for upgrade in station['selling_modules']:
                             tdenv.DEBUG2("upgrade_id:{},station_id:{},modified:{}",
                                  upgrade,
                                  station['id'],
                                  modified)
-                            db.execute("""INSERT INTO UpgradeVendor
-                                ( upgrade_id,station_id,cost,modified ) VALUES
-                                ( ?, ?, (SELECT Upgrade.cost FROM Upgrade WHERE Upgrade.upgrade_id = ?), ? ) """,
-                                (upgrade,
-                                 station_id,
-                                 upgrade,
-                                 modified))
+                            self.execute("""INSERT INTO UpgradeVendor
+                                        ( upgrade_id,station_id,cost,modified ) VALUES
+                                        ( ?, ?, (SELECT Upgrade.cost FROM Upgrade WHERE Upgrade.upgrade_id = ?), ? ) """,
+                                        (upgrade,
+                                         station_id,
+                                         upgrade,
+                                         modified))
                         self.updated['UpgradeVendor'] = True
-                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
         
-        success = False
-        while not success:
-            try:
-                db.commit()
-            except sqlite3.DatabaseError:
-                time.sleep(1)
-                continue
-            success = True
-            
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
 
     def importCommodities(self):
@@ -460,8 +447,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         Writes directly to the database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-        db = tdb.getDB()
-        
+                
         tdenv.NOTE("Processing Categories and Items: Start time = {}", datetime.datetime.now())
         with open(str(self.dataPath / self.commoditiesPath), "rU") as fh:
             commodities = json.load(fh)
@@ -470,19 +456,23 @@ class ImportPlugin(plugins.ImportPluginBase):
             # Get the categories from the json and place them into the Category table.
             category_id = commodity['category']['id']
             name = commodity['category']['name']
-            if db.execute("SELECT category_id FROM Category WHERE category_id = ?", (category_id,)).fetchone():
-                tdenv.DEBUG1("Updating: {}, {}", category_id, name)
-                db.execute("""UPDATE Category
-                        SET name = ?
-                        WHERE category_id = ?""", 
-                       (name, category_id))
-            else:
-                tdenv.DEBUG1("Inserting: {}, {}", category_id, name)
-                db.execute("""INSERT INTO Category
-                        ( category_id, name ) VALUES
-                        ( ?, ? ) """,
-                       (category_id, name))
-                       
+            
+            tdenv.DEBUG1("Updating: {}, {}", category_id, name)
+            try:
+                self.execute("""INSERT INTO Category
+                            ( category_id, name ) VALUES
+                            ( ?, ? ) """,
+                            (category_id, name))
+            except sqlite3.IntegrityError:
+                try:
+                    self.execute("""UPDATE Category
+                                SET name = ?
+                                WHERE category_id = ?""", 
+                                (name, category_id))
+
+                except sqlite3.IntegrityError:
+                    tdenv.DEBUG0("Unable to insert or update: {}, {}", category_id, name)
+            
             # Only put regular items here, rare items can't be dealt with.
             if not commodity['is_rare']:
                 item_id = commodity['id']
@@ -491,25 +481,28 @@ class ImportPlugin(plugins.ImportPluginBase):
                 avg_price = commodity['average_price']
                 fdev_id = commodity['ed_id']
                 # "ui_order" doesn't have an equivalent field in the json.
-                if db.execute("SELECT item_id FROM Item WHERE item_id = ?", (item_id,)).fetchone():
-                    tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
-                    db.execute("""UPDATE Item
-                        SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
-                        WHERE item_id = ?""", 
-                       (name,category_id,avg_price,fdev_id,
-                       item_id))
-                else:
-                    tdenv.DEBUG1("Inserting: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
-                    db.execute("""INSERT INTO Item
-                        ( item_id,name,category_id,avg_price,fdev_id ) VALUES
-                        ( ?, ?, ?, ?, ? )""",
-                        (item_id,name,category_id,avg_price,fdev_id))
-
+                
+                tdenv.DEBUG1("Updating: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+                try:
+                    self.execute("""INSERT INTO Item
+                                ( item_id,name,category_id,avg_price,fdev_id ) VALUES
+                                ( ?, ?, ?, ?, ? )""",
+                                (item_id,name,category_id,avg_price,fdev_id))
+                except sqlite3.IntegrityError:
+                    try:
+                        self.execute("""UPDATE Item
+                                    SET name = ?,category_id = ?,avg_price = ?,fdev_id = ?
+                                    WHERE item_id = ?""", 
+                                    (name,category_id,avg_price,fdev_id,
+                                     item_id))
+                    except sqlite3.IntegrityError:
+                        tdenv.DEBUG0("Unable to insert or update: {}, {}, {}, {}, {}", item_id,name,category_id,avg_price,fdev_id)
+                        
         # The items aren't in the same order in the json as they are in the game's UI.
         # This creates a temporary object that has all the items sorted first
         # by category and second by name, as in the UI, which will then be used to
         # update the entries in the database with the correct "ui_order" value.
-        temp = db.execute("""SELECT
+        temp = self.execute("""SELECT
                         name, category_id, item_id
                         FROM Item
                         ORDER BY category_id, name
@@ -523,23 +516,14 @@ class ImportPlugin(plugins.ImportPluginBase):
                 cat_id = line[1]
             else:
                 ui_order+= 1
-            db.execute("""UPDATE Item
+            self.execute("""UPDATE Item
                         set ui_order = ?
                         WHERE item_id = ?""",
                        (ui_order, line[2]))
-
+        
         self.updated['Category'] = True
         self.updated['Item'] = True
         
-        success = False
-        while not success:
-            try:
-                db.commit()
-            except sqlite3.DatabaseError:
-                time.sleep(1)
-                continue
-            success = True
-            
         tdenv.NOTE("Finished processing Categories and Items. End time = {}", datetime.datetime.now())
 
     def regenerate(self):
@@ -560,15 +544,18 @@ class ImportPlugin(plugins.ImportPluginBase):
                     )
                     self.tdenv.NOTE("{} exported.", path)
 
-    def importListings(self):
+    def importListings(self, listings_file):
         """
         Updates the market data (AKA the StationItem table) using listings.csv
         Writes directly to database.
         """
         tdb, tdenv = self.tdb, self.tdenv
-        db = tdb.getDB()
-
-        tdenv.NOTE("Processing market data: Start time = {}", datetime.datetime.now())
+        
+        tdenv.NOTE("Processing market data from {}: Start time = {}", listings_file, datetime.datetime.now())
+        if not listings_file.exists():
+            tdenv.NOTE("File not found, aborting: {}", listings_file)
+            return
+        
         progress = 0
         total = 1
         def blocks(f, size = 65536):
@@ -577,10 +564,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if not b: break
                 yield b
 
-        with open(str(self.dataPath / self.listingsPath), "r",encoding = "utf-8",errors = 'ignore') as f:
+        with open(str(self.dataPath / listings_file), "r",encoding = "utf-8",errors = 'ignore') as f:
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
-        with open(str(self.dataPath / self.listingsPath), "rU") as fh:
+        with open(str(self.dataPath / listings_file), "rU") as fh:
             listings = csv.DictReader(fh)
             for listing in listings:
                 progress += 1
@@ -594,8 +581,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 supply_price = int(listing['buy_price'])
                 supply_units = int(listing['supply'])
                 supply_level = int(listing['supply_bracket']) if listing['supply_bracket'] != '' else -1
-
-                result = db.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
+                
+                result = self.execute("SELECT modified FROM StationItem WHERE station_id = ? AND item_id = ?", (station_id, item_id)).fetchone()
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     if int(listing['collected_at']) > updated:
@@ -604,43 +591,33 @@ class ImportPlugin(plugins.ImportPluginBase):
                              demand_price, demand_units, demand_level,
                              supply_price, supply_units, supply_level)
                         try:
-                            db.execute("""UPDATE StationItem
-                            SET modified = ?,
-                             demand_price = ?, demand_units = ?, demand_level = ?,
-                             supply_price = ?, supply_units = ?, supply_level = ?
-                            WHERE station_id = ? AND item_id = ?""",
-                            (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level,
-                            station_id, item_id))
+                            self.execute("""UPDATE StationItem
+                                    SET modified = ?,
+                                     demand_price = ?, demand_units = ?, demand_level = ?,
+                                     supply_price = ?, supply_units = ?, supply_level = ?,
+                                     from_live = 0
+                                    WHERE station_id = ? AND item_id = ?""",
+                                    (modified, demand_price, demand_units, demand_level, supply_price, supply_units, supply_level,
+                                     station_id, item_id))
                         except sqlite3.IntegrityError:
                             tdenv.DEBUG1("Error on update.")
-                            pass
                 else:
                     tdenv.DEBUG1("Inserting:{}, {}, {}, {}, {}, {}, {}, {}, {}",
                              station_id, item_id, modified,
                              demand_price, demand_units, demand_level,
                              supply_price, supply_units, supply_level)
                     try:
-                        db.execute("""INSERT INTO StationItem
-                            (station_id, item_id, modified,
-                             demand_price, demand_units, demand_level,
-                             supply_price, supply_units, supply_level)
-                            VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ? )""",
-                            (station_id, item_id, modified,
-                            demand_price, demand_units, demand_level,
-                            supply_price, supply_units, supply_level))
+                        self.execute("""INSERT INTO StationItem
+                                (station_id, item_id, modified,
+                                 demand_price, demand_units, demand_level,
+                                 supply_price, supply_units, supply_level, from_live)
+                                VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, 0 )""",
+                                (station_id, item_id, modified,
+                                 demand_price, demand_units, demand_level,
+                                 supply_price, supply_units, supply_level))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
-                        pass
         
-        success = False
-        while not success:
-            try:
-                db.commit()
-            except sqlite3.DatabaseError:
-                time.sleep(1)
-                continue
-            success = True
-            
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
     def run(self):
@@ -681,7 +658,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         if (tmpFile.find('modified DATETIME NOT NULL,') == -1):
             tmpFile = tmpFile.replace('cost INTEGER,\n\n',
                       'cost INTEGER,\n   modified DATETIME NOT NULL,\n\n')
-
+        
+        # Adding this index makes the UpgradeVendor update MUCH faster.
+        tmpFile = tmpFile.replace(";\n\n\nCREATE TABLE RareItem",";\nCREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);\n\nCREATE TABLE RareItem")
+        
         # Having the UNIQUE key be "name" is going to cause problems, so change them all to be the relevant ID# instead.
         tmpFile = tmpFile.replace("UNIQUE (name),\n\n    FOREIGN KEY (added_id)","UNIQUE (system_id),\n\n    FOREIGN KEY (added_id)")
         tmpFile = tmpFile.replace("UNIQUE (system_id, name),","UNIQUE (station_id),")
@@ -689,15 +669,20 @@ class ImportPlugin(plugins.ImportPluginBase):
         tmpFile = tmpFile.replace("cost NUMBER NOT NULL,\n\n   UNIQUE (name)","cost NUMBER NOT NULL,\n\n   UNIQUE (upgrade_id)")
         tmpFile = tmpFile.replace("name VARCHAR(40) COLLATE nocase,\n\n   UNIQUE (name)","name VARCHAR(40) COLLATE nocase,\n\n   UNIQUE (category_id)")
         tmpFile = tmpFile.replace("UNIQUE (category_id, name),","UNIQUE (item_id),")
-        tmpFile = tmpFile.replace(";\n\n\nCREATE TABLE RareItem",";\nCREATE INDEX idx_vendor_by_station_id ON UpgradeVendor (station_id);\n\nCREATE TABLE RareItem")
 
         for tableKey in ['system_id', 'station_id', 'ship_id', 'upgrade_id', 'category_id', 'item_id']:
             tmpFile = tmpFile.replace(tableKey + ' INTEGER PRIMARY KEY AUTOINCREMENT', tableKey + ' INTEGER PRIMARY KEY')
             
-        #For backwards compatibility, undo these changes on databases that older versions of the plugin altered.
+        # For backwards compatibility, undo these changes on databases that older versions of the plugin altered.
         tmpFile = tmpFile.replace("UNIQUE (rare_id),\n\n   FOREIGN KEY (station_id)", "UNIQUE (name),\n\n   FOREIGN KEY (station_id)")
         tmpFile = tmpFile.replace('rare_id INTEGER PRIMARY KEY,', 'rare_id INTEGER PRIMARY KEY AUTOINCREMENT,')
             
+        # Adding this column allows the listener to quickly export only the 
+        # listings that have been modified since the last EDDB dump update.
+        if (tmpFile.find("from_live INTEGER DEFAULT 0 NOT NULL,") == -1):
+            self.execute("ALTER TABLE StationItem ADD from_live INTEGER DEFAULT 0 NOT NULL")
+        tmpFile = tmpFile.replace("CURRENT_TIMESTAMP NOT NULL,\n\n  PRIMARY KEY (station_id, item_id),","CURRENT_TIMESTAMP NOT NULL,\n  from_live INTEGER DEFAULT 0 NOT NULL,\n\n  PRIMARY KEY (station_id, item_id),")
+        
         with tdb.sqlPath.open('w', encoding = "utf-8") as fh:
             fh.write(tmpFile)
    
@@ -752,8 +737,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             self.options['force'] = True
 
         tdenv.ignoreUnknown = True
-
-        tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
+        
+        success = False
+        while not success:
+            try:
+                tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
+                success = True
+            except sqlite3.OperationalError:
+                print("Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
 
         #Select which options will be updated
         if self.getOption("listings"):
@@ -805,13 +797,24 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("item"):
             if self.downloadFile(COMMODITIES, self.commoditiesPath) or self.getOption("force"):
                 self.importCommodities()
-
+        
+        success = False
+        while not success:
+            try:
+                tdb.getDB().commit()
+                success = True
+            except sqlite3.OperationalError:
+                print("Database is locked, waiting for access.", end = "\r")
+                time.sleep(1)
+        
         #Remake the .csv files with the updated info.
         self.regenerate()
 
         if self.getOption("listings"):
             if self.downloadFile(LISTINGS, self.listingsPath) or self.getOption("force"):
-                self.importListings()
+                self.importListings(self.listingsPath)
+            if self.downloadFile(LIVE_LISTINGS, self.liveListingsPath) or self.getOption("force"):
+                self.importListings(self.liveListingsPath)
 
         tdb.close()
 
