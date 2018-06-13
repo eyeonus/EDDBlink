@@ -587,7 +587,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 if result:
                     updated = timegm(datetime.datetime.strptime(result[0],'%Y-%m-%d %H:%M:%S').timetuple())
                     # When the dump file data matches the database, update to make from_live == 0.
-                    if int(listing['collected_at']) == updated and listing_file == LISTINGS:
+                    if int(listing['collected_at']) == updated and listings_file == LISTINGS:
                         self.execute("""UPDATE StationItem
                                     SET from_live = 0
                                     WHERE station_id = ? AND item_id = ?""",
