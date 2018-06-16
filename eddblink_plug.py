@@ -93,8 +93,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 else:
                     result = cur.execute(sql_cmd)
                 success = True
-            except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+            except sqlite3.OperationalError as e:
+                print("(execute) Database is locked, waiting for access. " + str(e), end = "\r")
                 time.sleep(1)
         return result
     
@@ -686,7 +686,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             
         # Adding this column allows the listener to quickly export only the 
         # listings that have been modified since the last EDDB dump update.
-        if (tmpFile.find("from_live INTEGER DEFAULT 0 NOT NULL,") == -1):
+        if (tmpFile.find("from_live INTEGER DEFAULT 0 NOT NULL,") == -1) and not firstRun:
             self.execute("ALTER TABLE StationItem ADD from_live INTEGER DEFAULT 0 NOT NULL")
         tmpFile = tmpFile.replace("CURRENT_TIMESTAMP NOT NULL,\n\n  PRIMARY KEY (station_id, item_id),","CURRENT_TIMESTAMP NOT NULL,\n  from_live INTEGER DEFAULT 0 NOT NULL,\n\n  PRIMARY KEY (station_id, item_id),")
         
@@ -726,7 +726,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             # otherwise TD will crash trying to insert the rare items to the database,
             # because there's nothing in the Station table it tries to pull from.
             ri_path = tdb.dataPath / Path("RareItem.csv")
-            rib_path = tdb.dataPath / Path("RareItem.tmp")
+            rib_path = ri_path.with_suffix(".tmp")
             if rib_path.exists() and ri_path.exists():
                 rib_path.unlink()
             if ri_path.exists():
@@ -750,8 +750,8 @@ class ImportPlugin(plugins.ImportPluginBase):
             try:
                 tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
                 success = True
-            except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+            except sqlite3.OperationalError as e:
+                print("(load) Database is locked, waiting for access. " + str(e), end = "\r")
                 time.sleep(1)
 
         #Select which options will be updated
@@ -811,7 +811,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdb.getDB().commit()
                 success = True
             except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+                print("(commit) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         
         #Remake the .csv files with the updated info.
@@ -829,7 +829,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 tdb.getDB().commit()
                 success = True
             except sqlite3.OperationalError:
-                print("Database is locked, waiting for access.", end = "\r")
+                print("(commit) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         
         tdb.close()
