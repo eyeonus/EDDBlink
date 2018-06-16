@@ -636,6 +636,18 @@ class ImportPlugin(plugins.ImportPluginBase):
         except FileExistsError:
             pass
 
+        # Run 'listings' by default:
+        # If no options, or if only 'force', 'skipvend', and/or 'fallback', 
+        # have been passed, enable 'listings'.
+        default = False
+        for option in self.options:
+            if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
+                default = True
+                
+        print(default)
+        if default:
+            self.options["listings"] = True
+        
         # We need to get rid of the AUTOINCREMENTS for the tables we'll be modifying.
         # This will alter the file "TradeDangerous.sql".
         # We're going to be using the ID's provided by EDDN instead.
