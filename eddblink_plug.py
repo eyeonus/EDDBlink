@@ -93,8 +93,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                 else:
                     result = cur.execute(sql_cmd)
                 success = True
-            except sqlite3.OperationalError as e:
-                print("(execute) Database is locked, waiting for access. " + str(e), end = "\r")
+            except sqlite3.OperationalError:
+                print("(execute) Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
         return result
     
@@ -632,7 +632,7 @@ class ImportPlugin(plugins.ImportPluginBase):
            Path(str(self.dataPath)).mkdir()
         except FileExistsError:
             pass
-
+        
         # Run 'listings' by default:
         # If no options, or if only 'force', 'skipvend', and/or 'fallback', 
         # have been passed, enable 'listings'.
@@ -640,7 +640,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         for option in self.options:
             if not ((option == 'force') or (option == 'fallback') or (option == 'skipvend')):
                 default = True
-                
+        
         if default:
             self.options["listings"] = True
         
@@ -758,10 +758,10 @@ class ImportPlugin(plugins.ImportPluginBase):
             try:
                 tdb.load(maxSystemLinkLy = tdenv.maxSystemLinkLy)
                 success = True
-            except sqlite3.OperationalError as e:
-                print("(load) Database is locked, waiting for access. " + str(e), end = "\r")
+            except sqlite3.OperationalError:
+                print("Database is locked, waiting for access.", end = "\r")
                 time.sleep(1)
-
+        
         #Select which options will be updated
         if self.getOption("listings"):
             self.options["item"] = True
@@ -791,7 +791,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         if self.getOption("skipvend"):
             self.options["shipvend"] = False
             self.options["upvend"] = False
-            
+        
         # Download required files and update tables.
         if self.getOption("upgrade"):
             if self.downloadFile(UPGRADES, self.upgradesPath) or self.getOption("force"):
