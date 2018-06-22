@@ -11,6 +11,7 @@ import time
 import tradedb
 import tradeenv
 import transfers
+import misc.progress as pbar
 
 from urllib import request
 from calendar import timegm
@@ -257,9 +258,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
+            if True:
+                prog = pbar.Progress(total, 100)
             for line in fh:
-                progress += 1
-                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
+                if True:
+                    prog.increment(1)
+                else:
+                    progress += 1
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -288,6 +294,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ( ?, ?, ?, ?, ?, ? ) """,
                                 (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
+            prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
 
@@ -319,9 +326,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
+            if True:
+                prog = pbar.Progress(total, 100)
             for line in fh:
-                progress += 1
-                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
+                if True:
+                    prog.increment(1)
+                else:
+                    progress += 1
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
                 station = json.loads(line)
                 
                 # Import Stations
@@ -436,7 +448,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                          upgrade,
                                          modified))
                         self.updated['UpgradeVendor'] = True
-        
+            prog.clear()
+
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
 
     def importCommodities(self):
@@ -566,10 +579,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
+            if True:
+                prog = pbar.Progress(total, 100)
             listings = csv.DictReader(fh)
             for listing in listings:
-                progress += 1
-                print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")
+                if True:
+                    prog.increment(1)
+                else:
+                    progress += 1
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
                 station_id = int(listing['station_id'])
                 item_id = int(listing['commodity_id'])
                 modified = datetime.datetime.utcfromtimestamp(int(listing['collected_at'])).strftime('%Y-%m-%d %H:%M:%S')
@@ -621,7 +639,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  supply_price, supply_units, supply_level))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
-        
+            prog.clear()
+
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
     def run(self):
