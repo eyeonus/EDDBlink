@@ -11,7 +11,6 @@ import time
 import tradedb
 import tradeenv
 import transfers
-import urllib
 import misc.progress as pbar
 
 from urllib import request
@@ -259,9 +258,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
-            prog = pbar.Progress(total, 100)
+            if True:
+                prog = pbar.Progress(total, 100)
             for line in fh:
-                prog.increment(1)
+                if True:
+                    prog.increment(1)
+                else:
+                    progress += 1
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -322,9 +326,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
-            prog = pbar.Progress(total, 100)
+            if True:
+                prog = pbar.Progress(total, 100)
             for line in fh:
-                prog.increment(1)
+                if True:
+                    prog.increment(1)
+                else:
+                    progress += 1
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
                 station = json.loads(line)
                 
                 # Import Stations
@@ -570,10 +579,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
-            prog = pbar.Progress(total, 100)
+            if True:
+                prog = pbar.Progress(total, 100)
             listings = csv.DictReader(fh)
             for listing in listings:
-                prog.increment(1)
+                if True:
+                    prog.increment(1)
+                else:
+                    progress += 1
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
                 station_id = int(listing['station_id'])
                 item_id = int(listing['commodity_id'])
                 modified = datetime.datetime.utcfromtimestamp(int(listing['collected_at'])).strftime('%Y-%m-%d %H:%M:%S')
