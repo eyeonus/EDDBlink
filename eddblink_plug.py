@@ -54,7 +54,8 @@ class ImportPlugin(plugins.ImportPluginBase):
         'skipvend':     "Don't regenerate ShipVendors or UpgradeVendors. Supercedes '-O all', '-O clean'.",
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
-        'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working."
+        'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
+        'progbar':      "USe '[=   ]' progress instead of '(125/500) 25%'"
     }
 
     def __init__(self, tdb, tdenv):
@@ -258,14 +259,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
-            if True:
+            if self.getOption("progbar"):
                 prog = pbar.Progress(total, 100)
             for line in fh:
-                if True:
+                if self.getOption("progbar"):
                     prog.increment(1)
                 else:
                     progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
                 system = json.loads(line)
                 system_id = system['id']
                 name = system['name']
@@ -294,7 +295,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                 ( ?, ?, ?, ?, ?, ? ) """,
                                 (system_id, name, pos_x, pos_y, pos_z, modified))
                     self.updated['System'] = True
-            prog.clear()
+            if self.getOption("progbar"):
+                prog.clear()
         
         tdenv.NOTE("Finished processing Systems. End time = {}", datetime.datetime.now())
 
@@ -326,14 +328,14 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
-            if True:
+            if self.getOption("progbar"):
                 prog = pbar.Progress(total, 100)
             for line in fh:
-                if True:
+                if self.getOption("progbar"):
                     prog.increment(1)
                 else:
                     progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
                 station = json.loads(line)
                 
                 # Import Stations
@@ -448,7 +450,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                          upgrade,
                                          modified))
                         self.updated['UpgradeVendor'] = True
-            prog.clear()
+            if self.getOption("progbar"):
+                prog.clear()
 
         tdenv.NOTE("Finished processing Stations. End time = {}", datetime.datetime.now())
 
@@ -579,15 +582,15 @@ class ImportPlugin(plugins.ImportPluginBase):
             total += (sum(bl.count("\n") for bl in blocks(f)))
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
-            if True:
+            if self.getOption("progbar"):
                 prog = pbar.Progress(total, 100)
             listings = csv.DictReader(fh)
             for listing in listings:
-                if True:
+                if self.getOption("progbar"):
                     prog.increment(1)
                 else:
                     progress += 1
-                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%    ", end = "\r")        
+                    print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
                 station_id = int(listing['station_id'])
                 item_id = int(listing['commodity_id'])
                 modified = datetime.datetime.utcfromtimestamp(int(listing['collected_at'])).strftime('%Y-%m-%d %H:%M:%S')
@@ -639,7 +642,8 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  supply_price, supply_units, supply_level))
                     except sqlite3.IntegrityError:
                         tdenv.DEBUG1("Error on insert.")
-            prog.clear()
+            if self.getOption("progbar"):
+                prog.clear()
 
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
 
