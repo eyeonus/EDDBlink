@@ -96,9 +96,13 @@ class ImportPlugin(plugins.ImportPluginBase):
                 else:
                     result = cur.execute(sql_cmd)
                 success = True
-            except sqlite3.OperationalError:
-                print("(execute) Database is locked, waiting for access.", end = "\r")
-                time.sleep(1)
+            except sqlite3.OperationalError as e:
+                if str(e) != "database is locked":
+                    success = True
+                    raise sqlite3.OperationalError(e)
+                else:
+                    print("(execute) Database is locked, waiting for access.", end = "\r")
+                    time.sleep(1)
         return result
     
     def downloadFile(self, urlTail, path):
