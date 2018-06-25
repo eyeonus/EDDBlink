@@ -110,24 +110,27 @@ class ImportPlugin(plugins.ImportPluginBase):
         Fetch the latest dumpfile from the website if newer than local copy.
         """
         tdb, tdenv = self.tdb, self.tdenv
-
+        
+        tdenv.DEBUG0("Checking for update to '{}'.", path)
         if urlTail == SHIPS_URL:
             url = SHIPS_URL
         else:
-            try:
-                request.urlopen(BASE_URL + urlTail)
-            except:
-                # If Tromador's mirror fails for whatever reason,
-                # fallback to download direct from EDDB.io
-                self.options["fallback"] = True
+            if not self.getOption('fallback'):
+                try:
+                    url = BASE_URL + urlTail
+                    response = request.urlopen(url)
+                except:
+                    # If Tromador's mirror fails for whatever reason,
+                    # fallback to download direct from EDDB.io
+                    self.options["fallback"] = True
             if self.getOption('fallback'):
                 # EDDB.io doesn't have live listings.
                 if urlTail == LIVE_LISTINGS:
                     return False
 
                 url = FALLBACK_URL + urlTail
-            else:
-                url = BASE_URL + urlTail
+                response = request.urlopen(url)
+        
         dumpModded = 0
         # The coriolis file is from github, so it doesn't have a "Last-Modified" metadata.
         if url != SHIPS_URL:
@@ -140,7 +143,7 @@ class ImportPlugin(plugins.ImportPluginBase):
             Months = {'Jan':1, 'Feb':2, 'Mar':3, 'Apr':4, 'May':5, 'Jun':6, 'Jul':7, 'Aug':8, 'Sep':9, 'Oct':10, 'Nov':11, 'Dec':12}
 
             # We need to split the string twice, because the time is separated by ':', not ' '.
-            dDL = request.urlopen(url).getheader("Last-Modified").split(' ')
+            dDL = response.getheader("Last-Modified").split(' ')
             dTL = dDL[4].split(':')
 
             # Now we need to make a datetime object using the DateList and TimeList we just created,
@@ -153,14 +156,11 @@ class ImportPlugin(plugins.ImportPluginBase):
         if Path.exists(self.dataPath / path):
             localModded = (self.dataPath / path).stat().st_mtime
             if localModded >= dumpModded and url != SHIPS_URL:
-                tdenv.DEBUG0("'{}': Dump is not more recent than Local, skipping download.", path)
+                tdenv.DEBUG0("'{}': Dump is not more recent than Local.", path)
                 return False
-        tdenv.NOTE("Downloading file: '{}'.", path)
-        transfers.download(
-            self.tdenv,
-            url,
-            self.dataPath / path,
-        )
+        
+        tdenv.NOTE("Downloading file '{}'.", path)
+        transfers.download( self.tdenv, url, self.dataPath / path, )
         return True
 
     def importUpgrades(self):
@@ -265,10 +265,10 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 80)
+                prog = pbar.Progress(total, 50)
             for line in fh:
                 if self.getOption("progbar"):
-                    prog.increment(1)
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 else:
                     progress += 1
                     print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
@@ -334,10 +334,10 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 80)
+                prog = pbar.Progress(total, 50)
             for line in fh:
                 if self.getOption("progbar"):
-                    prog.increment(1)
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 else:
                     progress += 1
                     print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
@@ -589,11 +589,11 @@ class ImportPlugin(plugins.ImportPluginBase):
 
         with open(str(self.dataPath / listings_file), "rU") as fh:
             if self.getOption("progbar"):
-                prog = pbar.Progress(total, 80)
+                prog = pbar.Progress(total, 50)
             listings = csv.DictReader(fh)
             for listing in listings:
                 if self.getOption("progbar"):
-                    prog.increment(1)
+                    prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
                 else:
                     progress += 1
                     print("\rProgress: (" + str(progress) + "/" + str(total) + ") " + str(round(progress / total * 100, 2)) + "%\t\t", end = "\r")        
