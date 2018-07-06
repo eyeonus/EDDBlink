@@ -30,4 +30,4 @@ Here are all the options available and a brief explanation of what each does:
     'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
     'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
-    'progbar':      "USe '[=   ]' progress instead of '(125/500) 25%'"
+    'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'"

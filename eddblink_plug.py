@@ -55,7 +55,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         'force':        "Force regeneration of selected items even if source file not updated since previous run. "
                         "(Useful for updating Vendor tables if they were skipped during a '-O clean' run.)",
         'fallback':     "Fallback to using EDDB.io if Tromador's mirror isn't working.",
-        'progbar':      "USe '[=   ]' progress instead of '(125/500) 25%'"
+        'progbar':      "Use '[=   ]' progress instead of '(125/500) 25%'"
     }
 
     def __init__(self, tdb, tdenv):
@@ -266,6 +266,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / self.systemsPath), "rU") as fh:
             if self.getOption("progbar"):
                 prog = pbar.Progress(total, 50)
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
             for line in fh:
                 if self.getOption("progbar"):
                     prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
@@ -335,6 +336,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / self.stationsPath), "rU") as fh:
             if self.getOption("progbar"):
                 prog = pbar.Progress(total, 50)
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
             for line in fh:
                 if self.getOption("progbar"):
                     prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
@@ -590,6 +592,7 @@ class ImportPlugin(plugins.ImportPluginBase):
         with open(str(self.dataPath / listings_file), "rU") as fh:
             if self.getOption("progbar"):
                 prog = pbar.Progress(total, 50)
+                prog.increment(1, postfix=lambda value, goal: " " + str(round(value / total * 100)) + "%")
             listings = csv.DictReader(fh)
             for listing in listings:
                 if self.getOption("progbar"):
