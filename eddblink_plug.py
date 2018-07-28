@@ -661,6 +661,44 @@ class ImportPlugin(plugins.ImportPluginBase):
         
         self.updated['Listings'] = True
         tdenv.NOTE("Finished processing market data. End time = {}", datetime.datetime.now())
+    
+    # There's no way to get the plugin to fix the bug in this method and reload the module,
+    # so we'll make the fix anyway, but override the method.
+    def usage(self):
+        with open('./plugins/__init__.py','r',encoding = 'utf-8') as fh:
+            tmpFile = fh.read()
+        
+        if (tmpFile.find("tw.subsequent_indent=' ' * 16,") != -1):
+            tmpFile = tmpFile.replace("tw.subsequent_indent=' ' * 16,","tw.subsequent_indent=' ' * 24")
+            with open('./plugins/__init__.py', 'w', encoding = "utf-8") as fh:
+                fh.write(tmpFile)
+
+        tw = TextWrapper(
+                width=78,
+                drop_whitespace=True,
+                expand_tabs=True,
+                fix_sentence_endings=True,
+                break_long_words=True,
+                break_on_hyphens=True,
+        )
+
+        text = tw.fill(self.__doc__.strip()) + "\n\n"
+
+        try:
+            options = self.pluginOptions
+        except AttributeError:
+            return text + "This plugin does not support any options.\n"
+
+        tw.subsequent_indent=' ' * 24
+        text += "Options supported by this plugin:\n"
+        for opt in sorted(options.keys()):
+            text += "--opt={:<12}  ".format(opt)
+            text += tw.fill(options[opt].strip()) + "\n"
+        text += "\n"
+        text += "You can also chain options together, e.g.:\n"
+        text += "  --opt={}\n".format(",".join(list(options.keys())[:3]))
+
+        return text
 
     def run(self):
         tdb, tdenv = self.tdb, self.tdenv
@@ -696,7 +734,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                 fh.write(tmpFile)
             # This makes it so we don't have to restart TD to make the csvexport change be recognized.
             reload(csvexport)
-
+        
         with tdb.sqlPath.open('r', encoding = "utf-8") as fh:
             tmpFile = fh.read()
 
