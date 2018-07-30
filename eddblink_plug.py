@@ -121,7 +121,7 @@ class ImportPlugin(plugins.ImportPluginBase):
                     url = BASE_URL + urlTail
                     response = request.urlopen(url)
                 except:
-                    # If Tromador's mirror fails for whatever reason,
+                    # If Tromador's server fails for whatever reason,
                     # fallback to download direct from EDDB.io
                     self.options["fallback"] = True
             if self.getOption('fallback'):
@@ -420,7 +420,10 @@ class ImportPlugin(plugins.ImportPluginBase):
                         tdenv.DEBUG1("{}/{} has shipyard, updating ships sold.", system, name)
                         for ship in station['selling_ships']:
                             # Make sure all the 'Mark N' ship names abbreviate 'Mark' the same.
-                            ship = ship.replace(' MK ', ' Mk ').replace(' Mk ', ' Mk. ')
+                            ship = ship.replace('MK', 'Mk').replace('Mk', 'Mk.')
+                            if "Mk." in ship and "Mk. " not in ship:
+                                ship = ship.replace("Mk.", "Mk. ")
+                            
                             tdenv.DEBUG2("ship_id:{},station_id:{},modified:{}",
                                  ship,
                                  station_id,
