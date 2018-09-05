@@ -479,13 +479,16 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  upgrade,
                                  station['id'],
                                  modified)
-                            self.execute("""INSERT INTO UpgradeVendor
+                            try:
+                                self.execute("""INSERT INTO UpgradeVendor
                                         ( upgrade_id,station_id,cost,modified ) VALUES
                                         ( ?, ?, (SELECT Upgrade.cost FROM Upgrade WHERE Upgrade.upgrade_id = ?), ? ) """,
                                         (upgrade,
                                          station_id,
                                          upgrade,
                                          modified))
+                            except sqlite3.IntegrityError:
+                                continue
                         self.updated['UpgradeVendor'] = True
             if self.getOption("progbar"):
                 while prog.value < prog.maxValue:
