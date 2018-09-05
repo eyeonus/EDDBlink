@@ -450,12 +450,15 @@ class ImportPlugin(plugins.ImportPluginBase):
                                  ship,
                                  station_id,
                                  modified)
-                            self.execute("""INSERT INTO ShipVendor
+                            try:
+                                self.execute("""INSERT INTO ShipVendor
                                         ( ship_id,station_id,modified ) VALUES
                                         ( (SELECT Ship.ship_id FROM Ship WHERE Ship.name = ?), ?, ? ) """,
                                         (ship,
                                          station_id,
                                          modified))
+                            except sqlite3.IntegrityError:
+                                continue
                         self.updated['ShipVendor'] = True
                         
                 #Import Outfitters into UpgradeVendors if upvend is set.
