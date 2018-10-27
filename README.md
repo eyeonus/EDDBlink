@@ -1,7 +1,9 @@
 # Developer's Note
 
 This repo is no longer being maintained/updated.
+
 This plugin is now a part of Trade Dangerous on the eye-TD repo located at:
+
 https://github.com/eyeonus/Trade-Dangerous.
 
 # EDDBlink
